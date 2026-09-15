@@ -550,19 +550,21 @@ async function savePost() {
 }
 
 // ============ PROFILE ============
+// ============ PROFILE ============
 async function loadProfile(tab = 'secrets') {
   try {
-    const d = await api('/posts');
-    const mine = d.posts;
+    const d = await api('/posts?mine=1');
+    const mine = d.posts || [];
     const mySecrets = mine.filter(p => p.type === 'secret');
     const myStories = mine.filter(p => p.type === 'story');
+    const myComments = mine.reduce((acc, p) => acc + (p.comments_count || 0), 0);
 
     $('profileView').innerHTML = `
       <div class="profile-head">
         <div class="profile-avatar">${esc(firstLetter(state.user.login))}</div>
         <div class="profile-info">
           <h2>${esc(state.user.login)} ${state.user.role !== 'user' ? `<span class="role-tag ${state.user.role}">${esc(ROLE_SHORT[state.user.role])}</span>` : ''}</h2>
-          <div class="meta">Публикаций: ${mine.length}</div>
+          <div class="meta">Секретов: ${mySecrets.length} · Историй: ${myStories.length} · Комментариев: ${myComments}</div>
         </div>
       </div>
       <div class="profile-tabs">
@@ -587,7 +589,10 @@ async function loadProfile(tab = 'secrets') {
     document.querySelectorAll('.profile-post-item').forEach(el => {
       el.onclick = () => App.go('post', parseInt(el.dataset.id, 10));
     });
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    console.error(e);
+    $('profileView').innerHTML = `<div class="empty">Ошибка: ${esc(e.message)}</div>`;
+  }
 }
 
 // ============ STAFF ============

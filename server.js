@@ -299,19 +299,29 @@ app.delete('/api/account', auth(true), sensitiveLimiter, async (req, res) => {
 });
 
 // ============ POSTS ============
-app.get('/api/posts', readLimiter, async (req, res) => {
-  const { type } = req.query;
+app.get('/api/posts', readLimiter, auth(false), async (req, res) => {
+  const { type, mine } = req.query;
   let sql = `
-    SELECT p.id, p.type, p.body, p.is_anon, p.author_name, p.allow_comments,
+    SELECT p.id, p.user_id, p.type, p.body, p.is_anon, p.author_name, p.allow_comments,
            p.created_at, p.edited_at,
            (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comments_count
     FROM posts p
     WHERE p.is_hidden = FALSE`;
   const params = [];
+
+  // Фильтр по типу
   if (type === 'secret' || type === 'story') {
-    sql += ' AND p.type = $1';
     params.push(type);
+    sql += ` AND p.type = $${params.length}`;
   }
+
+  // Фильтр «только мои»
+  if (mine === '1') {
+    if (!req.user) return res.json({ posts: [] });
+    params.push(req.user.id);
+    sql += ` AND p.user_id = $${params.length}`;
+  }
+
   sql += ' ORDER BY p.created_at DESC LIMIT 200';
 
   const r = await pool.query(sql, params);
