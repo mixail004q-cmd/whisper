@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0a0a0a">
+<title>Whisper — Секреты и Истории</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+
+<div class="nav">
+  <div class="brand" onclick="App.go('feed')">
+    <span id="brandIcon">💬</span>
+    <span>whisper</span><span class="muted">.online</span>
+  </div>
+  <div class="nav-tabs" id="navTabs">
+    <button id="navFeed" class="active">Лента</button>
+    <button id="navProfile">Профиль</button>
+    <button id="navStaff" class="hidden">Персонал</button>
+    <button id="navMod" class="hidden">Модерация</button>
+  </div>
+  <div class="nav-user" id="navUser"></div>
+</div>
+
+<div class="wrap">
+
+  <section id="authSection" class="auth-card">
+    <h1>Whisper</h1>
+    <div class="auth-sub">Анонимные секреты и истории из жизни</div>
+
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active">Вход</button>
+      <button id="tabRegister">Регистрация</button>
+    </div>
+
+    <input type="text" id="loginInput" placeholder="Логин" maxlength="20" autocomplete="username">
+    <input type="email" id="emailInput" placeholder="Email (необязательно, для восстановления)" style="display:none;" autocomplete="email">
+    <input type="password" id="passInput" placeholder="Пароль (8+ символов)" autocomplete="current-password">
+    <input type="password" id="pass2Input" placeholder="Повторите пароль" style="display:none;" autocomplete="new-password">
+
+    <div id="turnstileWrap" style="display:none;margin:10px 0;">
+      <div class="cf-turnstile" data-sitekey="" id="turnstileWidget"></div>
+    </div>
+
+    <button class="btn-primary" id="authBtn">Войти</button>
+    <div id="authError" class="form-msg error"></div>
+    <div class="hint">Пароль хранится на сервере в зашифрованном виде.</div>
+  </section>
+
+  <section id="appSection" class="hidden">
+
+    <div id="feedView">
+      <div class="actions" id="actionsBlock">
+        <button class="btn-action" id="btnNewSecret">
+          <div class="icon" id="iconSecret">🤫</div>
+          <div>Написать секрет</div>
+          <div class="sub">То, что скрыто внутри</div>
+        </button>
+        <button class="btn-action" id="btnNewStory">
+          <div class="icon" id="iconStory">📖</div>
+          <div>Рассказать историю</div>
+          <div class="sub">Что случилось с тобой</div>
+        </button>
+      </div>
+
+      <div class="feed-head">
+        <h3>Лента</h3>
+        <span class="count" id="feedCount">0</span>
+        <div class="filters">
+          <button class="filter active" data-f="all">Все</button>
+          <button class="filter" data-f="secret">Секреты</button>
+          <button class="filter" data-f="story">Истории</button>
+        </div>
+      </div>
+
+      <div id="postsWrap"></div>
+      <div id="emptyState" class="empty hidden">Пока ничего нет. Опубликуй первую запись.</div>
+    </div>
+
+    <div id="postView" class="hidden"></div>
+    <div id="profileView" class="hidden"></div>
+    <div id="staffView" class="hidden"></div>
+    <div id="modView" class="hidden"></div>
+
+  </section>
+
+</div>
+
+<button id="supportFab" class="support-fab hidden" title="Поддержка">🆘</button>
+<span id="supportBadge" class="support-badge hidden">0</span>
+
+<div id="createModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="createTitle">Новый секрет</h2>
+    <div class="modal-sub" id="createSubtitle">Заполни поля и опубликуй</div>
+    <div class="toggle-row">
+      <div class="toggle-label"><div class="title">Анонимно</div><div class="desc">Скрыть твой ник</div></div>
+      <label class="switch"><input type="checkbox" id="anonToggle" checked><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label"><div class="title">Комментарии</div><div class="desc">Разрешить комментарии</div></div>
+      <label class="switch"><input type="checkbox" id="commentsToggle" checked><span class="slider"></span></label>
+    </div>
+    <div class="field">
+      <label id="textLabel">Секрет</label>
+      <textarea id="bodyText" maxlength="3000" placeholder="Напиши сюда..."></textarea>
+    </div>
+    <div class="author-preview" id="authorPreview" style="display:none;">
+      <span class="label">Автор записи:</span><span class="value" id="authorValue">—</span>
+    </div>
+    <div id="formMsg" class="form-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-save" id="btnSavePost">Опубликовать</button>
+      <button class="btn-cancel-modal" id="btnCancelModal">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<div id="supportModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>🆘 Поддержка</h2>
+    <div class="modal-sub">Опиши проблему — ответим в чате</div>
+    <div id="supportTicketForm">
+      <div class="field">
+        <label>Тема</label>
+        <input type="text" id="ticketSubject" maxlength="120" placeholder="Кратко о проблеме">
+      </div>
+      <div class="field">
+        <label>Приоритет</label>
+        <select id="ticketPriority" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:16px">
+          <option value="low">Низкий</option>
+          <option value="normal" selected>Обычный</option>
+          <option value="high">Срочный</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Причина обращения</label>
+        <textarea id="ticketReason" maxlength="2000" placeholder="Опиши подробно..."></textarea>
+      </div>
+      <div id="ticketMsg" class="form-msg"></div>
+      <div class="modal-actions">
+        <button class="btn-save" id="btnSendTicket">Отправить</button>
+        <button class="btn-cancel-modal" id="btnSupportClose">Закрыть</button>
+      </div>
+    </div>
+    <div id="supportTicketsList" class="hidden"></div>
+    <div id="supportTicketChat" class="hidden"></div>
+  </div>
+</div>
+
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>⚙️ Настройки аккаунта</h2>
+    <div class="modal-sub">Смена пароля, экспорт, удаление</div>
+
+    <div class="admin-section">
+      <h3>Сменить пароль</h3>
+      <div class="field">
+        <label>Текущий пароль</label>
+        <input type="password" id="oldPass" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label>Новый пароль (8+)</label>
+        <input type="password" id="newPass" autocomplete="new-password">
+      </div>
+      <button class="btn-save" id="btnChangePass" style="margin-top:12px;width:100%;padding:12px;border:none;border-radius:10px;font-weight:600;cursor:pointer">Сменить пароль</button>
+      <div id="passMsg" class="form-msg"></div>
+    </div>
+
+    <div class="admin-section">
+      <h3>Экспорт данных</h3>
+      <button id="btnExport" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border-2);color:var(--text);border-radius:10px;cursor:pointer;font-family:inherit">Скачать мои данные (JSON)</button>
+    </div>
+
+    <div class="admin-section" style="border-color:var(--red)">
+      <h3 style="color:var(--red)">Удаление аккаунта</h3>
+      <div class="field">
+        <label>Подтверди пароль</label>
+        <input type="password" id="delPass" autocomplete="current-password">
+      </div>
+      <button id="btnDeleteAccount" style="width:100%;padding:12px;background:var(--red);border:none;color:#fff;border-radius:10px;cursor:pointer;font-family:inherit;font-weight:600;margin-top:8px">Удалить аккаунт навсегда</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" id="btnCloseSettings">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
